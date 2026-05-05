@@ -39,12 +39,8 @@ func parseFlags(args []string) (*config, error) {
 		return nil, errors.New("at least one input file or directory is required")
 	}
 
-	if outputFormat != "" {
-		switch outputFormat {
-		case "yaml", "toml", "json":
-		default:
-			return nil, fmt.Errorf("unsupported output format %q: must be yaml, toml, or json", outputFormat)
-		}
+	if err := validateOutputFormat(outputFormat); err != nil {
+		return nil, err
 	}
 
 	return &config{
@@ -52,4 +48,18 @@ func parseFlags(args []string) (*config, error) {
 		output:       output,
 		outputFormat: outputFormat,
 	}, nil
+}
+
+// validateOutputFormat checks that the given format is one of the supported
+// output formats. An empty string is accepted and means auto-detection.
+func validateOutputFormat(format string) error {
+	if format == "" {
+		return nil
+	}
+	switch format {
+	case "yaml", "toml", "json":
+		return nil
+	default:
+		return fmt.Errorf("unsupported output format %q: must be yaml, toml, or json", format)
+	}
 }
