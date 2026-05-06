@@ -61,6 +61,15 @@ func (w *Watcher) Stop() {
 	close(w.stop)
 }
 
+// Add appends a new file path to the list of watched files and records its
+// current modification time so that only future changes trigger events.
+func (w *Watcher) Add(path string) {
+	w.files = append(w.files, path)
+	if info, err := os.Stat(filepath.Clean(path)); err == nil {
+		w.mtimes[path] = info.ModTime()
+	}
+}
+
 func (w *Watcher) poll() {
 	for _, f := range w.files {
 		info, err := os.Stat(filepath.Clean(f))
