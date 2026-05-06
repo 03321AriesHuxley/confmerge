@@ -36,6 +36,14 @@ func TestLoadSchema_NotFound(t *testing.T) {
 	}
 }
 
+func TestLoadSchema_InvalidYAML(t *testing.T) {
+	p := writeTempSchema(t, "host: [unclosed bracket\n")
+	_, err := schema.LoadSchema(p)
+	if err == nil {
+		t.Fatal("expected error for invalid YAML")
+	}
+}
+
 func TestValidate_RequiredPresent(t *testing.T) {
 	s := schema.Schema{
 		"host": {Type: schema.TypeString, Required: true},
