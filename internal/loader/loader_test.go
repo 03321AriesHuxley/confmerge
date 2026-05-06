@@ -57,6 +57,17 @@ func TestLoadFile_NotFound(t *testing.T) {
 	}
 }
 
+func TestLoadFile_EmptyYAML(t *testing.T) {
+	path := writeTempFile(t, "empty.yaml", "")
+	out, err := loader.LoadFile(path)
+	if err != nil {
+		t.Fatalf("unexpected error for empty YAML file: %v", err)
+	}
+	if len(out) != 0 {
+		t.Errorf("expected empty map for empty YAML, got %v", out)
+	}
+}
+
 func TestDetectFormat(t *testing.T) {
 	cases := []struct {
 		path   string
