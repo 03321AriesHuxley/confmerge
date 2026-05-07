@@ -4,31 +4,46 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"os"
 )
 
-// config holds the parsed CLI configuration.
-type config struct {
-	inputs       []string
-	output       string
-	outputFormat string
+// Config holds the parsed CLI flags for a single confmerge invocation.
+type Config struct {
+	Inputs       []string
+	Output       string
+	Format       string
+	Diff         bool
+	DryRun       bool
+	SortKeys     bool
+	SortDesc     bool
+	EnvSubst     bool
+	Flatten      bool
+	SchemaFile   string
+	PatchFile    string
+	Profile      bool
+	CacheDir     string
+	Watch        bool
 }
 
-// parseFlags parses the command-line arguments and returns a config.
-func parseFlags(args []string) (*config, error) {
+func parseFlags(args []string) (*Config, error) {
 	fs := flag.NewFlagSet("confmerge", flag.ContinueOnError)
+	fs.SetOutput(os.Stderr)
 
-	var output string
-	var outputFormat string
-
-	fs.StringVar(&output, "o", "", "Output file path (default: stdout)")
-	fs.StringVar(&output, "output", "", "Output file path (default: stdout)")
-	fs.StringVar(&outputFormat, "f", "", "Output format: yaml, toml, json (auto-detected from -o if omitted)")
-	fs.StringVar(&outputFormat, "format", "", "Output format: yaml, toml, json (auto-detected from -o if omitted)")
-
-	fs.Usage = func() {
-		fmt.Fprintf(fs.Output(), "Usage: confmerge [options] <file-or-dir>...\n\nOptions:\n")
-		fs.PrintDefaults()
-	}
+	var (
+		output     = fs.String("output", "", "write merged result to `file` (default: stdout)")
+		format     = fs.String("format", "yaml", "output format: yaml|toml|json")
+		diff       = fs.Bool("diff", false, "print a diff instead of the merged result")
+		dryRun     = fs.Bool("dry-run", false, "validate and diff without writing output")
+		sortKeys   = fs.Bool("sort-keys", false, "sort map keys in the output")
+		sortDesc   = fs.Bool("sort-desc", false, "sort keys in descending order (requires --sort-keys)")
+		envSubst   = fs.Bool("env-subst", false, "substitute ${VAR} placeholders from environment")
+		flatten    = fs.Bool("flatten", false, "flatten nested maps to dot-separated keys")
+		schema     = fs.String("schema", "", "path to JSON-schema YAML file for validation")
+		patch      = fs.String("patch", "", "path to patch file (RFC-6902-style operations)")
+		profile    = fs.Bool("profile", false, "print pipeline stage timings to stderr")
+		cacheDir   = fs.String("cache-dir", "", "directory for caching parsed inputs")
+		watch      = fs.Bool("watch", false, "re-run pipeline when input files change")
+	)
 
 	if err := fs.Parse(args); err != nil {
 		return nil, err
@@ -39,27 +54,32 @@ func parseFlags(args []string) (*config, error) {
 		return nil, errors.New("at least one input file or directory is required")
 	}
 
-	if err := validateOutputFormat(outputFormat); err != nil {
+	if err := validateOutputFormat(*format); err != nil {
 		return nil, err
 	}
 
-	return &config{
-		inputs:       inputs,
-		output:       output,
-		outputFormat: outputFormat,
+	return &Config{
+		Inputs:     inputs,
+		Output:     *output,
+		Format:     *format,
+		Diff:       *diff,
+		DryRun:     *dryRun,
+		SortKeys:   *sortKeys,
+		SortDesc:   *sortDesc,
+		EnvSubst:   *envSubst,
+		Flatten:    *flatten,
+		SchemaFile: *schema,
+		PatchFile:  *patch,
+		Profile:    *profile,
+		CacheDir:   *cacheDir,
+		Watch:      *watch,
 	}, nil
 }
 
-// validateOutputFormat checks that the given format is one of the supported
-// output formats. An empty string is accepted and means auto-detection.
-func validateOutputFormat(format string) error {
-	if format == "" {
-		return nil
-	}
-	switch format {
+func validateOutputFormat(f string) error {
+	switch f {
 	case "yaml", "toml", "json":
 		return nil
-	default:
-		return fmt.Errorf("unsupported output format %q: must be yaml, toml, or json", format)
 	}
+	return fmt.Errorf("unsupported output format %q: must be yaml, toml, or json", f)
 }
