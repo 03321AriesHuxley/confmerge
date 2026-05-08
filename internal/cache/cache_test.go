@@ -96,3 +96,24 @@ func TestKey_DeterministicForSamePaths(t *testing.T) {
 		t.Errorf("Key not deterministic: %q != %q", k1, k2)
 	}
 }
+
+func TestKey_DiffersForDifferentContent(t *testing.T) {
+	dir := t.TempDir()
+
+	f1 := filepath.Join(dir, "a.yaml")
+	f2 := filepath.Join(dir, "b.yaml")
+	_ = os.WriteFile(f1, []byte("a: 1"), 0o644)
+	_ = os.WriteFile(f2, []byte("a: 2"), 0o644)
+
+	k1, err := cache.Key([]string{f1})
+	if err != nil {
+		t.Fatalf("Key f1: %v", err)
+	}
+	k2, err := cache.Key([]string{f2})
+	if err != nil {
+		t.Fatalf("Key f2: %v", err)
+	}
+	if k1 == k2 {
+		t.Errorf("expected different keys for different file contents, got %q for both", k1)
+	}
+}
