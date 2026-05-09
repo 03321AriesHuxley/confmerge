@@ -18,6 +18,8 @@ type Options struct {
 }
 
 // Apply runs all enabled transformations on data and returns the result.
+// Transformations are applied in order: environment variable substitution first,
+// then flattening. The original map is never modified.
 func Apply(data map[string]any, opts Options) (map[string]any, error) {
 	result := data
 	if opts.EnvSubst {
@@ -34,6 +36,7 @@ func Apply(data map[string]any, opts Options) (map[string]any, error) {
 }
 
 // envSubstMap recursively replaces environment variable references in string values.
+// It handles ${VAR} and $VAR syntax via os.ExpandEnv.
 func envSubstMap(data map[string]any) (map[string]any, error) {
 	out := make(map[string]any, len(data))
 	for k, v := range data {
@@ -54,13 +57,11 @@ func envSubstMap(data map[string]any) (map[string]any, error) {
 }
 
 // flattenMap recursively flattens nested maps using sep as the key separator.
+// For example, with sep ".", {"a": {"b": 1}} becomes {"a.b": 1}.
 func flattenMap(data map[string]any, sep, prefix string) map[string]any {
 	out := make(map[string]any)
 	for k, v := range data {
-		fullKey := k
-		if prefix != "" {
-			fullKey = strings.Join([]string{prefix, k}, sep)
-		}
+		fullKey := buildKey(prefix, k, sep)
 		if nested, ok := v.(map[string]any); ok {
 			for fk, fv := range flattenMap(nested, sep, fullKey) {
 				out[fk] = fv
@@ -70,4 +71,12 @@ func flattenMap(data map[string]any, sep, prefix string) map[string]any {
 		}
 	}
 	return out
+}
+
+// buildKey joins prefix and key with sep, returning key unchanged when prefix is empty.
+func buildKey(prefix, key, sep string) string {
+	if prefix == "" {
+		return key
+	}
+	return strings.Join([]string{prefix, key}, sep)
 }
